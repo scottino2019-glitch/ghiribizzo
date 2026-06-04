@@ -198,7 +198,7 @@ export default function App() {
       scale: 1,
       color: brushColor,
       size: textSize,
-      life: isExploding ? 80 : 9999,
+      life: 9999,
       opacity: 1,
       pulseOffset,
     };
@@ -573,21 +573,30 @@ export default function App() {
             nextRotation += nextVx * 0.02;
 
           } else if (textEffect === 'float') {
-            // Drift and fly upwards
-            nextVy -= 0.09; // ascent accel
-            nextVy = Math.max(-4, nextVy); // limit speed
-            
-            const driftFreq = 0.02 + el.pulseOffset * 0.0003;
-            nextX += Math.sin(time * driftFreq) * 0.48; // sine drift left and right
-            nextY += nextVy;
+            // Drift and float upwards relative to its original row baseline (el.targetY)
+            // It floats up by about 1.5 times the character size and bobs there gently,
+            // which preserves the line spacing (interlinea) and prevents overlapping rows!
+            const floatLimit = el.size * 1.5;
+            const targetY = el.targetY - floatLimit;
 
-            // ceiling boundary bounce
-            if (nextY < el.size) {
-              nextY = el.size;
-              nextVy = -nextVy * 0.25; // damp soft bounce
+            // Accelerate upward towards targetY
+            if (nextY > targetY) {
+              nextVy -= 0.12; // gentle rise acceleration
+              nextVy = Math.max(-3, nextVy); // limit speed
+              nextY += nextVy;
+            } else {
+              // Once it reaches or passes the targeted float position, bob gently using a sine wave
+              const bobFreq = 0.02 + el.pulseOffset * 0.0003;
+              const bobAmp = el.size * 0.12; // bobbing amplitude
+              nextY = targetY + Math.sin(time * bobFreq) * bobAmp;
+              nextVy = 0;
             }
 
-            nextRotation = Math.sin(time * 0.03 + el.pulseOffset) * 0.08;
+            // Subtle horizontal drift
+            const driftFreq = 0.01 + el.pulseOffset * 0.0002;
+            nextX += Math.sin(time * driftFreq) * 0.35;
+
+            nextRotation = Math.sin(time * 0.02 + el.pulseOffset) * 0.06;
 
           } else if (textEffect === 'jitter') {
             // Vibrate intensely on target coordinates
@@ -596,12 +605,38 @@ export default function App() {
             nextRotation = el.rotation + (Math.random() * 0.06 - 0.03);
 
           } else if (textEffect === 'explode') {
-            // Physics dispersion explosion
-            nextX += nextVx;
+            // Physics dispersion explosion (high initial velocity) with gravity and bouncing so it stays on screen!
+            nextVy += 0.38; // Gravitational force
             nextY += nextVy;
-            nextVy += 0.05; // falling vector drift
-            nextLife -= 1;
-            nextOpacity = nextLife / 80;
+            nextX += nextVx;
+
+            // Ground floor bounce
+            if (nextY >= h - el.size * 0.45) {
+              nextY = h - el.size * 0.45;
+              nextVy = -nextVy * 0.52; // bounce rebound
+              nextVx *= 0.78; // ground friction
+
+              // Play boing sound if bounce velocity is substantial
+              if (Math.abs(nextVy) > 1.8 && !soundMuted) {
+                audioService.playBoingSound();
+              }
+
+              if (Math.abs(nextVy) < 0.4) {
+                nextVy = 0;
+              }
+            }
+
+            // Side boundaries bounce
+            if (nextX < el.size * 0.45) {
+              nextX = el.size * 0.45;
+              nextVx = -nextVx * 0.6;
+            } else if (nextX > w - el.size * 0.45) {
+              nextX = w - el.size * 0.45;
+              nextVx = -nextVx * 0.6;
+            }
+
+            // Spin with velocity
+            nextRotation += nextVx * 0.02;
           } else {
             // Static mode: subtle organic micro vibration (gives life!)
             const swayFreq = 0.005 + el.pulseOffset * 0.0001;
