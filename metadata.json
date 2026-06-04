@@ -1,0 +1,6 @@
+{
+  "name": "Scribble & Keyboard Recorder",
+  "description": "Un'applicazione divertente per disegnare a mano libera, digitare con la tastiera con effetti speciali pazzi, e registrare l'intera sessione in un video scaricabile.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
